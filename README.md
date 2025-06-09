@@ -1,6 +1,6 @@
 QFtpServer-MD
 
-Based on https://github.com/sashoalm/QFtpServer.\
+Based on https://github.com/sashoalm/QFtpServer. \
 Thank you Alexander!
 
 Made it simpler. No library. Tray icon application. Data port range. Subnet. SSL files selection.
