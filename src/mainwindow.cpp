@@ -410,9 +410,9 @@ void MainWindow::MainWindow::startServer()
 {
     QSslConfiguration conf;
 
-    conf.setLocalCertificateChain(QSslCertificate::fromPath(":/ssl/cert2.pem"));
+    conf.setLocalCertificateChain(QSslCertificate::fromPath(sslCertPath));
 
-    QFile file(":/ssl/key2.pem");
+    QFile file(sslKeyPath);
     file.open(QIODevice::ReadOnly);
     conf.setPrivateKey( QSslKey(file.readAll(), QSsl::Rsa, QSsl::Pem) );
 
