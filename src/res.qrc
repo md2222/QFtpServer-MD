@@ -1,0 +1,10 @@
+<RCC>
+    <qresource prefix="/">
+        <file>ssl/cacert.pem</file>
+        <file>ssl/privkey.pem</file>
+        <file>ssl/cert2.pem</file>
+        <file>ssl/key2.pem</file>
+        <file>icons/ftp-48.png</file>
+        <file>icons/ftp-48-off.png</file>
+    </qresource>
+</RCC>
