@@ -31,11 +31,11 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+public slots:
+    void onNewPeerIp(const QString &ip);
+
 signals:
     void sigQuit();
-
-private slots:
-    void onNewPeerIp(const QString &ip);
 
 private:
     Ui::MainWindow *ui;
@@ -60,7 +60,7 @@ private:
     bool anonEnable = false;
     bool readOnly = false;
     bool oneIp = true;
-    FtpServer *server;
+    FtpServer *server = 0;
 
     void closeEvent(QCloseEvent *ev);
     void changeEvent(QEvent *ev);

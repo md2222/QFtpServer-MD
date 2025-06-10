@@ -32,8 +32,10 @@ FtpControlConnection::FtpControlConnection(QObject *parent, QSslSocket *socket, 
     isLoggedIn = false;
     encryptDataConnection = false;
     socket->setParent(this);
-    connect(socket, SIGNAL(readyRead()), this, SLOT(acceptNewData()));
-    connect(socket, SIGNAL(disconnected()), this, SLOT(deleteLater()));
+    //connect(socket, SIGNAL(readyRead()), this, SLOT(acceptNewData()));
+    connect(socket, &QSslSocket::readyRead, this, &FtpControlConnection::acceptNewData);
+    //connect(socket, SIGNAL(disconnected()), this, SLOT(deleteLater()));
+    connect(socket, &QSslSocket::disconnected, this,  &FtpControlConnection::deleteLater);
     currentDirectory = "/";
 
     dataConnection = new DataConnection(this);
@@ -251,7 +253,8 @@ void FtpControlConnection::processCommand(const QString &entireCommand)
 
 void FtpControlConnection::startOrScheduleCommand(FtpCommand *ftpCommand)
 {
-    connect(ftpCommand, SIGNAL(reply(QString)), this, SLOT(reply(QString)));
+    //connect(ftpCommand, SIGNAL(reply(QString)), this, SLOT(reply(QString)));
+    connect(ftpCommand, &FtpCommand::reply, this, &FtpControlConnection::reply);
 
     if (!dataConnection->setFtpCommand(ftpCommand))
     {
@@ -362,7 +365,8 @@ void FtpControlConnection::quit()
     // If we have a running download or upload, we will wait until it's
     // finished before closing the control connection.
     if (dataConnection->ftpCommand()) {
-        connect(dataConnection->ftpCommand(), SIGNAL(destroyed()), this, SLOT(disconnectFromHost()));
+        //connect(dataConnection->ftpCommand(), SIGNAL(destroyed()), this, SLOT(disconnectFromHost()));
+        connect(dataConnection->ftpCommand(), &FtpCommand::destroyed, this, &FtpControlConnection::disconnectFromHost);
     } else {
         disconnectFromHost();
     }

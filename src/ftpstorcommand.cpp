@@ -35,7 +35,9 @@ void FtpStorCommand::startImplementation()
     if (seekTo) {
         file->seek(seekTo);
     }
-    connect(socket, SIGNAL(readyRead()), this, SLOT(acceptNextBlock()));
+
+    //connect(socket, SIGNAL(readyRead()), this, SLOT(acceptNextBlock()));
+    connect(socket, &QSslSocket::readyRead, this, &FtpStorCommand::acceptNextBlock);
 }
 
 void FtpStorCommand::acceptNextBlock()

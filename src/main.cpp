@@ -37,6 +37,8 @@ int main(int argc, char *argv[])
     w.setWindowFlags( Qt::WindowTitleHint | Qt::WindowSystemMenuHint |  Qt::WindowMinimizeButtonHint | Qt::WindowCloseButtonHint );
     //QObject::connect(&w, &MainWindow::sigQuit, &app, QApplication::quit, Qt::QueuedConnection);
     //w.show();
+    QObject::connect(&w, &MainWindow::sigQuit, &app, QApplication::quit, Qt::QueuedConnection);
+
     w.showMinimized();
 
     return app.exec();

@@ -6,6 +6,7 @@
 #include <QMessageBox>
 #include <QSslKey>
 #include <QSslSocket>
+#include <QNetworkAccessManager>
 #include <QDebug>
 
 QString appName = "FTP server";
@@ -57,7 +58,7 @@ MainWindow::MainWindow(QWidget *parent)
     //setWindowTitle(title);
     setWindowIcon(QIcon(":/icons/ftp-48.png"));
 
-    qInfo() << "QFtpServer-MD 0.0.2    3.06.2025";
+    qInfo() << "QFtpServer-MD 0.0.3    10.06.2025";
 
     bool isQss = true;
 
@@ -158,6 +159,18 @@ MainWindow::MainWindow(QWidget *parent)
     //if (set.value("mainWinState").toInt() == Qt::WindowMaximized)
         //setWindowState(Qt::WindowMaximized);
     set.endGroup();
+
+
+    bool bSupp = QSslSocket::supportsSsl();
+    QString buildVersion = QSslSocket::sslLibraryBuildVersionString();
+    QString version = QSslSocket::sslLibraryVersionString();
+    //qDebug() << "SSL:  " << bSupp << buildVersion << version;  // true "OpenSSL 1.1.1d  10 Sep 2019" "OpenSSL 3.0.2 15 Mar 2022"
+    qInfo() << "Support SSL:  " << bSupp;
+    qInfo() << "SSL build version:  " << buildVersion;
+    qInfo() << "SSL library version:  " << version;  // true "OpenSSL 1.1.1d  10 Sep 2019" "OpenSSL 3.0.2 15 Mar 2022"
+
+    //QNetworkAccessManager *accessManager = new QNetworkAccessManager(this);
+    //qDebug() << "SSL:  " << accessManager->supportedSchemes();
 }
 
 
@@ -169,6 +182,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::closeEvent(QCloseEvent *ev)
 {
+    qDebug() << "MainWindow::closeEvent:  ";
     // this keep window position
     ev->ignore();
     hide();
@@ -302,7 +316,9 @@ void MainWindow::saveParams()
 
 void MainWindow::onStart()
 {
-    server = 0;
+    //if (server)
+        //delete server;
+
     startServer();
 }
 
@@ -312,7 +328,7 @@ void MainWindow::onStop()
     if (server)
     {
         server->close();
-        server->deleteLater();
+        //server->deleteLater();
         qInfo() << "Stop listening";
     }
 
@@ -334,9 +350,12 @@ void MainWindow::onQuit()
     set.endGroup();
 
     onStop();
+    if (server)
+        server->deleteLater();
 
-    qApp->quit();
-    //emit sigQuit();
+    //qApp->quit();
+    //QApplication::quit();
+    emit sigQuit();
 }
 
 
@@ -406,8 +425,14 @@ void MainWindow::onConfDoubleClick(QModelIndex)
 }
 
 
-void MainWindow::MainWindow::startServer()
+void MainWindow::startServer()
 {
+    QSettings set(configFileName, QSettings::IniFormat);
+    set.beginGroup( "public" );
+
+    setPublicParams(set);
+    //qDebug() << "MainWindow::startServer:  " << sslKeyPath << sslCertPath;
+
     QSslConfiguration conf;
 
     conf.setLocalCertificateChain(QSslCertificate::fromPath(sslCertPath));
@@ -418,33 +443,33 @@ void MainWindow::MainWindow::startServer()
 
     conf.setPeerVerifyMode(QSslSocket::VerifyNone);
 
-    QSettings set(configFileName, QSettings::IniFormat);
-    set.beginGroup( "public" );
+    if (!server)
+    {
+        server = new FtpServer(this, rootPath, port, userName, passw, readOnly, oneIp);
+        connect(server, &FtpServer::newPeerIp, this, &MainWindow::onNewPeerIp);
+    }
 
-    setPublicParams(set);
-
-    if (server)
-        delete server;
-
-    server = new FtpServer(this, rootPath, port, userName, passw, readOnly, oneIp);
     server->setSslConf(conf);
     server->setPortRange(portRange);
     if (subnet.second)
         server->setSubnet(subnet);
 
-    //QObject::connect(server, &FtpServer::newPeerIp, &MainWindow::onNewPeerIp);
 
-    server->start();
+    if (!server->start())  // Release - Segmentation fault
+    {
+        qDebug() << "MainWindow::startServer:  server->start error";
+        server->deleteLater();
+        server = 0;
+        return;
+    }
 
     if (server->isListening())
     {
-        //ui->statusBar->showMessage("Listening at " + FtpServer::lanIp());
-        qInfo() << "Listening at " << FtpServer::lanIp();
+        qInfo() << "Listening at " << FtpServer::lanIp() << port;
         trayIcon->setIcon(QIcon(":/icons/ftp-48.png"));
     }
     else
     {
-        //ui->statusBar->showMessage("Not listening");
         qInfo() << "Not listening";
     }
 }

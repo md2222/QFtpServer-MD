@@ -16,6 +16,14 @@ FtpServer::FtpServer(QObject *parent, const QString &rootPath, int port, const Q
     this->rootPath = rootPath;
     this->readOnly = readOnly;
     this->onlyOneIpAllowed = onlyOneIpAllowed;
+
+    subnet.second = 0;
+}
+
+
+FtpServer::~FtpServer()
+{
+    close();
 }
 
 
@@ -28,9 +36,10 @@ bool FtpServer::setSslConf(QSslConfiguration &conf)
 }
 
 
-bool FtpServer::setPort(int port)
+bool FtpServer::setPort(int p)
 {
-    this->port = port;
+    this->port = p;
+    return true;
 }
 
 
@@ -50,22 +59,34 @@ bool FtpServer::setPortRange(PortRange range)
 
 bool FtpServer::start()
 {
-    server = new SslServer(this);
-    // In Qt4, QHostAddress::Any listens for IPv4 connections only, but as of
-    // Qt5, it now listens on all available interfaces, and
-    // QHostAddress::AnyIPv4 needs to be used if we want only IPv4 connections.
-#if QT_VERSION >= 0x050000
-    server->listen(QHostAddress::AnyIPv4, port);
-#else
-    server->listen(QHostAddress::Any, port);
-#endif
-    connect(server, SIGNAL(newConnection()), this, SLOT(startNewControlConnection()));
+    qDebug() << "FtpServer::start:  " << port;
+    //if (!server)
+    {
+        server = new SslServer(this);
+        //connect(server, SIGNAL(newConnection()), this, SLOT(startNewControlConnection()));
+        connect(server, &SslServer::newConnection, this, &FtpServer::startNewControlConnection);
+    }
+
+    return server->listen(QHostAddress::AnyIPv4, port);
 }
 
 
 bool FtpServer::isListening()
 {
-    return server->isListening();
+    qDebug() << "FtpServer::isListening:  " << server;
+    if (!server)
+        return false;
+    else
+        return server->isListening();
+}
+
+
+QString FtpServer::errorString()
+{
+    if (!server)
+        return QString("Server not created");
+    else
+        return server->errorString();
 }
 
 
@@ -73,22 +94,24 @@ void FtpServer::close()
 {
     if (server)
     {
-        //server->
-        //server->close();  //Segmentation fault
+        server->close();
         server->deleteLater();
+        server = 0;
     }
 }
 
 
 QString FtpServer::lanIp()
 {
-    foreach (const QHostAddress &address, QNetworkInterface::allAddresses()) {
-        if (address.protocol() == QAbstractSocket::IPv4Protocol && address != QHostAddress(QHostAddress::LocalHost)) {
+    foreach (const QHostAddress &address, QNetworkInterface::allAddresses())
+    {
+        if (address.protocol() == QAbstractSocket::IPv4Protocol && address != QHostAddress(QHostAddress::LocalHost))
             return address.toString();
-        }
     }
+
     return "";
 }
+
 
 void FtpServer::startNewControlConnection()
 {
@@ -96,19 +119,21 @@ void FtpServer::startNewControlConnection()
 
     // If this is not a previously encountered IP emit the newPeerIp signal.
     QString peerIp = socket->peerAddress().toString();
-    qDebug() << "connection from" << peerIp;
+    qDebug() << "New connection from" << peerIp;
 
     if (subnet.second && !socket->peerAddress().isInSubnet(subnet))
     {
-        qDebug() << "IP not in subnet:  " << peerIp;
+        qDebug() << "IP is not in the subnet:  " << peerIp;
         delete socket;
         return;
     }
 
-    if (!encounteredIps.contains(peerIp)) {
+    if (!encounteredIps.contains(peerIp))
+    {
         // If we don't allow more than one IP for the client, we close
         // that connection.
-        if (onlyOneIpAllowed && !encounteredIps.isEmpty()) {
+        if (onlyOneIpAllowed && !encounteredIps.isEmpty())
+        {
             delete socket;
             return;
         }

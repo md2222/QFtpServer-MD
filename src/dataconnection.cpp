@@ -89,7 +89,8 @@ bool DataConnection::setFtpCommand(FtpCommand *command)
     if (isActiveConnection)
     {
         socket = new QSslSocket(this);
-        connect(socket, SIGNAL(connected()), SLOT(connected()));
+        //connect(socket, SIGNAL(connected()), SLOT(connected()));
+        connect(socket, &QSslSocket::connected, this, &DataConnection::connected);
         socket->connectToHost(hostName, port);
     }
     else
@@ -151,7 +152,8 @@ void DataConnection::encrypted()
 void DataConnection::connected()
 {
     if (encrypt) {
-        connect(socket, SIGNAL(encrypted()), this, SLOT(encrypted()));
+        //connect(socket, SIGNAL(encrypted()), this, SLOT(encrypted()));
+        connect(socket, &QSslSocket::encrypted, this, &DataConnection::encrypted);
         SslServer::setLocalCertificateAndPrivateKey(socket);
         socket->startServerEncryption();
     } else {

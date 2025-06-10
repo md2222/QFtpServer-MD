@@ -54,7 +54,8 @@ void FtpListCommand::startImplementation()
 
     // Start the timer.
     timer = new QTimer(this);
-    connect(timer, SIGNAL(timeout()), this, SLOT(listNextBatch()));
+    //connect(timer, SIGNAL(timeout()), this, SLOT(listNextBatch()));
+    connect(timer, &QTimer::timeout, this, &FtpListCommand::listNextBatch);
     timer->start(500);  // md 0 > 500
 }
 

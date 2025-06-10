@@ -22,9 +22,9 @@ public:
     explicit FtpServer(QObject *parent, const QString &rootPath, int port = 21,
                        const QString &userName = QString(), const QString &password = QString(),
                        bool readOnly = false, bool onlyOneIpAllowed = false);
-
+    ~FtpServer();
     bool setSslConf(QSslConfiguration &conf);
-    bool setPort(int port);
+    bool setPort(int p);
     void setSubnet(const QPair<QHostAddress, int>& snet);
     bool setPortRange(PortRange range);
 
@@ -34,6 +34,7 @@ public:
     // internet connection is available, or the port address might require root
     // priviledges (on Linux).
     bool isListening();
+    QString errorString();
     void close();
 
     // Get the LAN IP of the host, e.g. "192.168.1.10".
@@ -67,7 +68,7 @@ private:
     QString rootPath;
 
     // The SSL server listen for incoming connections.
-    SslServer *server;
+    SslServer *server = 0;
 
     // All the IPs that this FTP server object has encountered in its lifetime.
     // See the signal newPeerIp.

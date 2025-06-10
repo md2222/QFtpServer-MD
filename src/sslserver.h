@@ -2,10 +2,11 @@
 #define SSLSERVER_H
 
 #include <QTcpServer>
+#include <QSslSocket>
 #include <QSslConfiguration>
 
 
-class QSslSocket;
+//class QSslSocket;
 
 
 // A simple SSL server. Returns a QSslSocket instead of a QTcpSocket, but
@@ -13,36 +14,28 @@ class QSslSocket;
 // well. The QSslSockets are loaded with a default certificate coming from the
 // resource files.
 
+//typedef qintptr PortableSocketDescriptorType;
+
 class SslServer : public QTcpServer
 {
     Q_OBJECT
 public:
     explicit SslServer(QObject *parent);
-    static bool setSslConf(QSslConfiguration &conf);
-    bool setPort(int port);
+    bool setPort(int p);
 
     // Sets the local certificate and private key for the socket, so
-    // startServerEncryption() can be used. We get the local certificate and
-    // private key from the application's resources.
+    // startServerEncryption() can be used.
+    static bool setSslConf(QSslConfiguration &conf);
     static void setLocalCertificateAndPrivateKey(QSslSocket *socket);
 
-signals:
+protected:
+    void incomingConnection(qintptr socketDescriptor);
 
 private:
-    static QSslConfiguration sslConf;
-    // Workaround so we support both Qt 5 and Qt 4.
-    // QTcpServer::incomingConnection(int handle) has been changed to
-    // QTcpServer::incomingConnection(qintptr handle) this 2nd one is sneaky as it
-    // compiles properly but no connections appear to arrive since the compiler
-    // doesn’t consider int and qintptr the same.
-#if QT_VERSION >= 0x050000
-    typedef qintptr PortableSocketDescriptorType;
-#else
-    typedef int PortableSocketDescriptorType;
-#endif
-
     int port = 0;
-    void incomingConnection(PortableSocketDescriptorType socketDescriptor);
+    //static QSslConfiguration sslConf;
 };
+
+extern QSslConfiguration sslConf;
 
 #endif // SSLSERVER_H

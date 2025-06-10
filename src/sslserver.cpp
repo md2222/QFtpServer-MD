@@ -3,7 +3,8 @@
 #include <QSslSocket>
 #include <QSslKey>
 
-QSslConfiguration SslServer::sslConf;
+//QSslConfiguration SslServer::sslConf;
+QSslConfiguration sslConf;
 
 
 SslServer::SslServer(QObject *parent) :
@@ -14,14 +15,17 @@ SslServer::SslServer(QObject *parent) :
 
 bool SslServer::setSslConf(QSslConfiguration &conf)
 {
-     SslServer::sslConf = conf;
+    //SslServer::sslConf = conf;
+    sslConf = conf;
 
     return true;
 }
 
-bool SslServer::setPort(int port)
+bool SslServer::setPort(int p)
 {
-    this->port = port;
+    this->port = p;
+
+    return true;
 }
 
 
@@ -36,15 +40,20 @@ void SslServer::setLocalCertificateAndPrivateKey(QSslSocket *socket)
 
     socket->setPeerVerifyMode(QSslSocket::VerifyNone);
 */
-    socket->setSslConfiguration(SslServer::sslConf);
+    //socket->setSslConfiguration(SslServer::sslConf);
+    socket->setSslConfiguration(sslConf);
 }
 
-void SslServer::incomingConnection(PortableSocketDescriptorType socketDescriptor)
+void SslServer::incomingConnection(qintptr socketDescriptor)
 {
     QSslSocket *socket = new QSslSocket(this);
-    if (socket->setSocketDescriptor(socketDescriptor)) {
+
+    if (socket->setSocketDescriptor(socketDescriptor))
+    {
         addPendingConnection(socket);
-    } else {
+    }
+    else
+    {
         delete socket;
     }
 }

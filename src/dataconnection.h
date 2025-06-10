@@ -57,8 +57,8 @@ private slots:
 
 private:
     void startFtpCommand();
-    SslServer *server;
-    QSslSocket *socket;
+    SslServer *server = 0;
+    QSslSocket *socket = 0;
     QPointer<FtpCommand> command;
     bool isSocketReady;
     bool isWaitingForFtpCommand;
