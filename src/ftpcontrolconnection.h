@@ -3,12 +3,27 @@
 
 #include <QObject>
 #include <QPointer>
+//#include <QSslConfiguration>
 #include "dataconnection.h"
 
 class QSslSocket;
 class FtpCommand;
 //class DataConnection;
-
+/*
+typedef struct
+{
+    int port = 21;
+    QSslConfiguration sslConf;
+    QString userName;
+    QString passw;
+    QString rootPath;
+    QPair<QHostAddress, int> subnet;
+    PortRange portRange;
+    bool anonEnable = false;
+    bool readOnly = false;
+    bool oneIp = false;
+} FtpParams;
+*/
 // Implements the ftp control connection. Reads the ftp commands from the
 // control connection socket, parses each line and maps it to an implemented
 // command. All of the ftp commands except the ones that require a data
@@ -29,6 +44,7 @@ public slots:
     // Slot used by the data connection handlers to send messages to the FTP
     // client through the control connection.
     void reply(const QString &replyCode);
+    //void onServerStop();
 
 private slots:
     // Handles any new data comming from the FTP client.
@@ -119,6 +135,8 @@ private:
     // Flag whether the client is allowed only read-only access (can download,
     // but not upload/modify).
     bool readOnly;
+
+    //FtpParams params;
 };
 
 #endif // FTPCONTROLCONNECTION_H

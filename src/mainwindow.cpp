@@ -1,6 +1,5 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "ftpserver.h"
 #include <QStandardPaths>
 #include <QDir>
 #include <QMessageBox>
@@ -58,7 +57,7 @@ MainWindow::MainWindow(QWidget *parent)
     //setWindowTitle(title);
     setWindowIcon(QIcon(":/icons/ftp-48.png"));
 
-    qInfo() << "QFtpServer-MD 0.0.3    10.06.2025";
+    qInfo() << "QFtpServer-MD 0.0.4    14.07.2025";
 
     bool isQss = true;
 
@@ -143,7 +142,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(confList, &ConfigList::doubleClicked, this,  &MainWindow::onConfDoubleClick);
 
-    subnet.second = 0;
+    servParams.subnet.second = 0;
 
     setupParams();
 
@@ -244,22 +243,22 @@ void MainWindow::setupParams()
 
 void MainWindow::setPublicParams(QSettings &set)
 {
-    port = set.value("port", defPort).toInt();
-    userName = set.value("userName", "").toString();
-    passw = set.value("passw", "").toString();
-    rootPath = set.value("rootPath", "").toString();
-    anonEnable = set.value("anonEnable", false).toBool();
-    readOnly = set.value("readOnly", false).toBool();
-    oneIp = set.value("oneIp", true).toBool();
+    servParams.port = set.value("port", defPort).toInt();
+    servParams.userName = set.value("userName", "").toString();
+    servParams.passw = set.value("passw", "").toString();
+    servParams.rootPath = set.value("rootPath", "").toString();
+    servParams.anonEnable = set.value("anonEnable", false).toBool();
+    servParams.readOnly = set.value("readOnly", false).toBool();
+    servParams.oneIp = set.value("oneIp", true).toBool();
     sslKeyPath = set.value("sslKeyPath", defSslKeyPath).toString();
     sslCertPath = set.value("sslCertPath", defSslCertPath).toString();
 
     QString s = set.value("portRange", "").toString();
-    QTextStream ts(&s);  ts >> portRange.first >> portRange.second;
+    QTextStream ts(&s);  ts >> servParams.portRange.first >> servParams.portRange.second;
     //qDebug() << "MainWindow::setPublicParams:  portRange=" << portRange;
 
     s = set.value("subnet", defSubnet).toString();
-    subnet = QHostAddress::parseSubnet(s);
+    servParams.subnet = QHostAddress::parseSubnet(s);
 }
 
 
@@ -390,8 +389,8 @@ void MainWindow::onOk()
         }
 
         s = confList->param("subnet")->value.toString();
-        subnet = QHostAddress::parseSubnet(s);
-        if (subnet.second == 0)
+        servParams.subnet = QHostAddress::parseSubnet(s);
+        if (servParams.subnet.second == 0)
         {
             //error = "Parse subnet error.";
             err = "Parse subnet error:  " + s;
@@ -430,32 +429,26 @@ void MainWindow::startServer()
     QSettings set(configFileName, QSettings::IniFormat);
     set.beginGroup( "public" );
 
-    setPublicParams(set);
-    //qDebug() << "MainWindow::startServer:  " << sslKeyPath << sslCertPath;
+    setPublicParams(set);  // set servParams
 
-    QSslConfiguration conf;
-
-    conf.setLocalCertificateChain(QSslCertificate::fromPath(sslCertPath));
+    servParams.sslConf.setLocalCertificateChain(QSslCertificate::fromPath(sslCertPath));
 
     QFile file(sslKeyPath);
     file.open(QIODevice::ReadOnly);
-    conf.setPrivateKey( QSslKey(file.readAll(), QSsl::Rsa, QSsl::Pem) );
+    servParams.sslConf.setPrivateKey( QSslKey(file.readAll(), QSsl::Rsa, QSsl::Pem) );
 
-    conf.setPeerVerifyMode(QSslSocket::VerifyNone);
+    servParams.sslConf.setPeerVerifyMode(QSslSocket::VerifyNone);
 
     if (!server)
     {
-        server = new FtpServer(this, rootPath, port, userName, passw, readOnly, oneIp);
+        server = new FtpServer(this);
         connect(server, &FtpServer::newPeerIp, this, &MainWindow::onNewPeerIp);
     }
 
-    server->setSslConf(conf);
-    server->setPortRange(portRange);
-    if (subnet.second)
-        server->setSubnet(subnet);
+    server->setParams(servParams);
 
 
-    if (!server->start())  // Release - Segmentation fault
+    if (!server->start())
     {
         qDebug() << "MainWindow::startServer:  server->start error";
         server->deleteLater();
@@ -465,7 +458,7 @@ void MainWindow::startServer()
 
     if (server->isListening())
     {
-        qInfo() << "Listening at " << FtpServer::lanIp() << port;
+        qInfo() << "Listening at " << FtpServer::lanIp() << servParams.port;
         trayIcon->setIcon(QIcon(":/icons/ftp-48.png"));
     }
     else

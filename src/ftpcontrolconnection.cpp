@@ -22,6 +22,7 @@ FtpControlConnection::FtpControlConnection(QObject *parent, QSslSocket *socket, 
         const QString &userName, const QString &password, bool readOnly, PortRange pr) :
     QObject(parent)
 {
+    qDebug() << "FtpControlConnection:  " << rootPath;
     this->socket = socket;
     this->userName = userName;
     this->password = password;

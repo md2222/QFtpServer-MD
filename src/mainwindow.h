@@ -8,6 +8,7 @@
 #include <QSystemTrayIcon>
 #include <QMenu>
 #include <QAction>
+#include "ftpserver.h"
 #include "configlist.h"
 #include "dataconnection.h"
 
@@ -47,19 +48,10 @@ private:
     QString configFileName;
     ConfigList* confList = 0;
     QVector<ParamStruct> params;
-    int port = 0;
-    QString userName;
-    QString passw;
-    QString rootPath;
+    FtpServerParams servParams;
     QString sslKeyPath;
     QString sslCertPath;
-    //QString portRange;
-    PortRange portRange;
-    QPair<QHostAddress, int> subnet;
-    //QString subnet;
     bool anonEnable = false;
-    bool readOnly = false;
-    bool oneIp = true;
     FtpServer *server = 0;
 
     void closeEvent(QCloseEvent *ev);

@@ -7,17 +7,9 @@
 #include <QSslSocket>
 
 
-FtpServer::FtpServer(QObject *parent, const QString &rootPath, int port, const QString &userName, const QString &password, bool readOnly, bool onlyOneIpAllowed) :
+FtpServer::FtpServer(QObject *parent) :
     QObject(parent)
 {
-    this->port = port;
-    this->userName = userName;
-    this->password = password;
-    this->rootPath = rootPath;
-    this->readOnly = readOnly;
-    this->onlyOneIpAllowed = onlyOneIpAllowed;
-
-    subnet.second = 0;
 }
 
 
@@ -27,39 +19,20 @@ FtpServer::~FtpServer()
 }
 
 
-bool FtpServer::setSslConf(QSslConfiguration &conf)
+bool FtpServer::setParams(FtpServerParams& params)
 {
-    //sslConf = conf;
-    SslServer::setSslConf(conf);
+    this->params = params;
+
+    SslServer::setSslConf(params.sslConf);
 
     return true;
 }
 
-
-bool FtpServer::setPort(int p)
-{
-    this->port = p;
-    return true;
-}
-
-
-void FtpServer::setSubnet(const QPair<QHostAddress, int>& snet)
-{
-    if (snet.second)
-        subnet = snet;
-}
-
-
-bool FtpServer::setPortRange(PortRange range)
-{
-    portRange = range;
-    return true;
-}
 
 
 bool FtpServer::start()
 {
-    qDebug() << "FtpServer::start:  " << port;
+    qDebug() << "FtpServer::start:  " << params.port;
     //if (!server)
     {
         server = new SslServer(this);
@@ -67,7 +40,7 @@ bool FtpServer::start()
         connect(server, &SslServer::newConnection, this, &FtpServer::startNewControlConnection);
     }
 
-    return server->listen(QHostAddress::AnyIPv4, port);
+    return server->listen(QHostAddress::AnyIPv4, params.port);
 }
 
 
@@ -97,6 +70,7 @@ void FtpServer::close()
         server->close();
         server->deleteLater();
         server = 0;
+        emit stop();
     }
 }
 
@@ -121,7 +95,7 @@ void FtpServer::startNewControlConnection()
     QString peerIp = socket->peerAddress().toString();
     qDebug() << "New connection from" << peerIp;
 
-    if (subnet.second && !socket->peerAddress().isInSubnet(subnet))
+    if (params.subnet.second && !socket->peerAddress().isInSubnet(params.subnet))
     {
         qDebug() << "IP is not in the subnet:  " << peerIp;
         delete socket;
@@ -132,7 +106,7 @@ void FtpServer::startNewControlConnection()
     {
         // If we don't allow more than one IP for the client, we close
         // that connection.
-        if (onlyOneIpAllowed && !encounteredIps.isEmpty())
+        if (params.oneIp && !encounteredIps.isEmpty())
         {
             delete socket;
             return;
@@ -143,5 +117,7 @@ void FtpServer::startNewControlConnection()
     }
 
     // Create a new FTP control connection on this socket.
-    new FtpControlConnection(this, socket, rootPath, userName, password, readOnly, portRange);
+    QObject* conn = new FtpControlConnection(this, socket, params.rootPath, params.userName, params.passw, params.readOnly, params.portRange);
+
+    connect(this, &FtpServer::stop, conn, &FtpControlConnection::deleteLater);
 }
