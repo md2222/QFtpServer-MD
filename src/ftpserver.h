@@ -5,30 +5,16 @@
 #include <QSet>
 #include <QSslConfiguration>
 //#include <qftpserverlib_global.h>
-#include "dataconnection.h"
+//#include "dataconnection.h"
 
 
 //class SslServer;
 #include "sslserver.h"
+#include "ftpcontrolconnection.h"
 
 
 // The ftp server. Listens on a port, and starts a new control connection each
 // time it gets connected.
-
-typedef struct
-{
-    int port = 21;
-    QSslConfiguration sslConf;
-    QString userName;
-    QString passw;
-    QString rootPath;
-    QPair<QHostAddress, int> subnet;
-    PortRange portRange;
-    bool anonEnable = false;
-    bool readOnly = false;
-    bool oneIp = false;
-} FtpServerParams;
-
 
 class FtpServer : public QObject
 {
@@ -36,7 +22,7 @@ class FtpServer : public QObject
 public:
     explicit FtpServer(QObject *parent);
     ~FtpServer();
-    bool setParams(FtpServerParams& params);
+    bool setParams(FtpParams& params);
 
     bool start();
     // Whether or not the server is listening for incoming connections. If it
@@ -63,7 +49,7 @@ private slots:
     void startNewControlConnection();
 
 private:
-    FtpServerParams params;
+    FtpParams params;
     SslServer *server = 0;
 
     // All the IPs that this FTP server object has encountered in its lifetime.

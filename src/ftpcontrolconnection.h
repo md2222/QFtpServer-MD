@@ -3,7 +3,8 @@
 
 #include <QObject>
 #include <QPointer>
-//#include <QSslConfiguration>
+//#include <QSslSocket>
+#include <QSslConfiguration>
 #include "dataconnection.h"
 
 class QSslSocket;
@@ -24,6 +25,22 @@ typedef struct
     bool oneIp = false;
 } FtpParams;
 */
+
+typedef struct
+{
+    int port = 21;
+    QSslConfiguration sslConf;
+    QString userName;
+    QString passw;
+    QString rootPath;
+    bool sslOnly = true;
+    QPair<QHostAddress, int> subnet;
+    PortRange portRange;
+    bool anonEnable = false;
+    bool readOnly = false;
+    bool oneIp = false;
+} FtpParams;
+
 // Implements the ftp control connection. Reads the ftp commands from the
 // control connection socket, parses each line and maps it to an implemented
 // command. All of the ftp commands except the ones that require a data
@@ -33,9 +50,10 @@ class FtpControlConnection : public QObject
 {
     Q_OBJECT
 public:
-    explicit FtpControlConnection(QObject *parent, QSslSocket *socket, const QString &rootPath,
+    /*explicit FtpControlConnection(QObject *parent, QSslSocket *socket, const QString &rootPath,
         const QString &userName = QString(), const QString &password = QString(), bool readOnly = false,
-        PortRange pr = { 0, 0 });
+        PortRange pr = { 0, 0 });*/
+    explicit FtpControlConnection(QObject *parent, QSslSocket *socket, FtpParams& params);
     ~FtpControlConnection();
 
 signals:
@@ -54,6 +72,7 @@ private slots:
 
 private:
     //PortRange portRange = { 0, 0 };
+    bool verifySsl(const QString &command);
     // Verify authentication for commands that require it. Returns true
     // if user logged in or if command doesn't require it.
     bool verifyAuthentication(const QString &command);
@@ -129,12 +148,15 @@ private:
     // The password that the FTP server expects.
     QString password;
     QString rootPath;
+    bool sslOnly = true;
+    bool isSslOk = false;
     // Flag for whether we should encrypt data connections.
-    bool encryptDataConnection;
+    bool encryptDataConnection = true;
     DataConnection *dataConnection;
     // Flag whether the client is allowed only read-only access (can download,
     // but not upload/modify).
-    bool readOnly;
+    bool readOnly = true;
+    bool anonEnable = false;
 
     //FtpParams params;
 };

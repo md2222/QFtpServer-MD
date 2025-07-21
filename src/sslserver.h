@@ -4,6 +4,7 @@
 #include <QTcpServer>
 #include <QSslSocket>
 #include <QSslConfiguration>
+#include <QSslKey>
 
 
 //class QSslSocket;

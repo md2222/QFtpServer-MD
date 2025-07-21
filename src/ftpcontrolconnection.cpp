@@ -18,17 +18,17 @@
 #include <QSslSocket>
 
 
-FtpControlConnection::FtpControlConnection(QObject *parent, QSslSocket *socket, const QString &rootPath,
-        const QString &userName, const QString &password, bool readOnly, PortRange pr) :
+FtpControlConnection::FtpControlConnection(QObject *parent, QSslSocket *socket, FtpParams& params) :
     QObject(parent)
 {
     qDebug() << "FtpControlConnection:  " << rootPath;
     this->socket = socket;
-    this->userName = userName;
-    this->password = password;
-    this->rootPath = rootPath;
-    this->readOnly = readOnly;
-    //portRange = pr;
+    this->userName = params.userName;
+    this->password = params.passw;
+    this->rootPath = params.rootPath;
+    this->readOnly = params.readOnly;
+    sslOnly = params.sslOnly;
+    anonEnable = params.anonEnable;
 
     isLoggedIn = false;
     encryptDataConnection = false;
@@ -40,14 +40,16 @@ FtpControlConnection::FtpControlConnection(QObject *parent, QSslSocket *socket, 
     currentDirectory = "/";
 
     dataConnection = new DataConnection(this);
-    dataConnection->setPortRange(pr);
+    dataConnection->setPortRange(params.portRange);
 
     reply("220 Welcome to QFtpServer.");
 }
 
+
 FtpControlConnection::~FtpControlConnection()
 {
 }
+
 
 void FtpControlConnection::acceptNewData()
 {
@@ -62,16 +64,23 @@ void FtpControlConnection::acceptNewData()
     QTimer::singleShot(500, this, SLOT(acceptNewData()));
 }
 
+
 void FtpControlConnection::disconnectFromHost()
 {
     socket->disconnectFromHost();
 }
 
+
+bool FtpControlConnection::verifySsl(const QString &command)
+{
+    return ( command == "AUTH" || !sslOnly || (sslOnly && isSslOk) );
+}
+
+
 bool FtpControlConnection::verifyAuthentication(const QString &command)
 {
-    if (isLoggedIn) {
+    if (isLoggedIn)
         return true;
-    }
 
     const char *commandsRequiringAuth[] = {
         "PWD", "CWD", "TYPE", "PORT", "PASV", "LIST", "RETR", "REST",
@@ -79,8 +88,10 @@ bool FtpControlConnection::verifyAuthentication(const QString &command)
         "STOR", "MKD", "RMD", "DELE", "RNFR", "RNTO", "APPE"
     };
 
-    for (size_t ii = 0; ii < sizeof(commandsRequiringAuth)/sizeof(commandsRequiringAuth[0]); ++ii) {
-        if (command == commandsRequiringAuth[ii]) {
+    for (size_t ii = 0; ii < sizeof(commandsRequiringAuth)/sizeof(commandsRequiringAuth[0]); ++ii)
+    {
+        if (command == commandsRequiringAuth[ii])
+        {
             reply("530 You must log in first.");
             return false;
         }
@@ -89,18 +100,20 @@ bool FtpControlConnection::verifyAuthentication(const QString &command)
     return true;
 }
 
+
 bool FtpControlConnection::verifyWritePermission(const QString &command)
 {
-    if (!readOnly) {
+    if (!readOnly)
         return true;
-    }
 
     const char *commandsRequiringWritePermission[] = {
         "STOR", "MKD", "RMD", "DELE", "RNFR", "RNTO", "APPE"
     };
 
-    for (size_t ii = 0; ii < sizeof(commandsRequiringWritePermission)/sizeof(commandsRequiringWritePermission[0]); ++ii) {
-        if (command == commandsRequiringWritePermission[ii]) {
+    for (size_t ii = 0; ii < sizeof(commandsRequiringWritePermission)/sizeof(commandsRequiringWritePermission[0]); ++ii)
+    {
+        if (command == commandsRequiringWritePermission[ii])
+        {
             reply("550 Can't do that in read-only mode.");
             return false;
         }
@@ -108,6 +121,7 @@ bool FtpControlConnection::verifyWritePermission(const QString &command)
 
     return true;
 }
+
 
 QString FtpControlConnection::stripFlagL(const QString &fileName)
 {
@@ -121,17 +135,23 @@ QString FtpControlConnection::stripFlagL(const QString &fileName)
     return fileName;
 }
 
+
 void FtpControlConnection::parseCommand(const QString &entireCommand, QString *command, QString *commandParameters)
 {
     // Split parameters and command.
     int pos = entireCommand.indexOf(' ');
-    if (-1 != pos) {
+
+    if (-1 != pos)
+    {
         *command = entireCommand.left(pos).trimmed().toUpper();
         *commandParameters = entireCommand.mid(pos+1).trimmed();
-    } else {
+    }
+    else
+    {
         *command = entireCommand.trimmed().toUpper();
     }
 }
+
 
 QString FtpControlConnection::toLocalPath(const QString &fileName) const
 {
@@ -166,11 +186,13 @@ QString FtpControlConnection::toLocalPath(const QString &fileName) const
     return localPath;
 }
 
+
 void FtpControlConnection::reply(const QString &replyCode)
 {
     qDebug() << "reply" << replyCode;
     socket->write((replyCode + "\r\n").toUtf8());
 }
+
 
 void FtpControlConnection::processCommand(const QString &entireCommand)
 {
@@ -180,11 +202,9 @@ void FtpControlConnection::processCommand(const QString &entireCommand)
     QString commandParameters;
     parseCommand(entireCommand, &command, &commandParameters);
 
-    if (!verifyAuthentication(command)) {
-        return;
-    }
-
-    if (!verifyWritePermission(command)) {
+    if (!verifySsl(command) || !verifyAuthentication(command) || !verifyWritePermission(command))
+    {
+        reply("421 Service not available.");
         return;
     }
 
@@ -376,23 +396,35 @@ void FtpControlConnection::quit()
 void FtpControlConnection::size(const QString &fileName)
 {
     QFileInfo fi(fileName);
-    if (!fi.exists() || fi.isDir()) {
+    if (!fi.exists() || fi.isDir())
+    {
         reply("550 Requested action not taken; file unavailable.");
-    } else {
+    }
+    else
+    {
         reply(QString("213 %1").arg(fi.size()));
     }
 }
 
+
+// may be  "USER User1 Password1"
 void FtpControlConnection::pass(const QString &password)
 {
     QString command;
     QString commandParameters;
+
     parseCommand(lastProcessedCommand, &command, &commandParameters);
-    if (this->password.isEmpty() || ("USER" == command && this->userName == commandParameters && this->password == password)) {
+
+    // it is prev command
+    if ( "USER" == command && ( (this->userName == commandParameters && this->password == password)
+         || (anonEnable && commandParameters == "anonymous")) )
+    {
         reply("230 You are logged in.");
         isLoggedIn = true;
-    } else {
-        reply("530 User name or password was incorrect.");
+    }
+    else
+    {
+        reply("530 Not logged in.");
     }
 }
 
@@ -401,19 +433,28 @@ void FtpControlConnection::auth()
     reply("234 Initializing SSL connection.");
     SslServer::setLocalCertificateAndPrivateKey(socket);
     socket->startServerEncryption();
+    isSslOk = true;
 }
 
 void FtpControlConnection::prot(const QString &protectionLevel)
 {
-    if ("C" == protectionLevel) {
-        encryptDataConnection = false;
-    } else if ("P" == protectionLevel) {
-        encryptDataConnection = true;
-    } else {
-        reply("502 Command not implemented.");
-        return;
+    QString s = "200 Command okay.";
+
+    if ("C" == protectionLevel)
+    {
+        if (sslOnly)
+            s = "421 Service not available.";
+        else
+            encryptDataConnection = false;
     }
-    reply("200 Command okay.");
+    else if ("P" == protectionLevel)
+    {
+        encryptDataConnection = true;
+    }
+    else
+        s = "502 Command not implemented.";
+
+    reply(s);
 }
 
 void FtpControlConnection::cdup()

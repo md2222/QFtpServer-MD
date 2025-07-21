@@ -1,5 +1,4 @@
 #include "ftpserver.h"
-#include "ftpcontrolconnection.h"
 #include "sslserver.h"
 
 #include <QDebug>
@@ -19,7 +18,7 @@ FtpServer::~FtpServer()
 }
 
 
-bool FtpServer::setParams(FtpServerParams& params)
+bool FtpServer::setParams(FtpParams& params)
 {
     this->params = params;
 
@@ -93,11 +92,11 @@ void FtpServer::startNewControlConnection()
 
     // If this is not a previously encountered IP emit the newPeerIp signal.
     QString peerIp = socket->peerAddress().toString();
-    qDebug() << "New connection from" << peerIp;
+    qInfo() << "New connection from" << peerIp;
 
     if (params.subnet.second && !socket->peerAddress().isInSubnet(params.subnet))
     {
-        qDebug() << "IP is not in the subnet:  " << peerIp;
+        qInfo() << "IP is not in the subnet:  " << peerIp;
         delete socket;
         return;
     }
@@ -117,7 +116,7 @@ void FtpServer::startNewControlConnection()
     }
 
     // Create a new FTP control connection on this socket.
-    QObject* conn = new FtpControlConnection(this, socket, params.rootPath, params.userName, params.passw, params.readOnly, params.portRange);
+    QObject* conn = new FtpControlConnection(this, socket, params);
 
     connect(this, &FtpServer::stop, conn, &FtpControlConnection::deleteLater);
 }

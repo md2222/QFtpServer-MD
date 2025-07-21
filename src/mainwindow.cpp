@@ -57,7 +57,7 @@ MainWindow::MainWindow(QWidget *parent)
     //setWindowTitle(title);
     setWindowIcon(QIcon(":/icons/ftp-48.png"));
 
-    qInfo() << "QFtpServer-MD 0.0.4    14.07.2025";
+    qInfo() << "QFtpServer-MD 0.0.5    21.07.2025";
 
     bool isQss = true;
 
@@ -233,6 +233,9 @@ void MainWindow::setupParams()
     param.label = "Subnet";  param.name = "subnet"; param.type = ConfigList::TypeString;
     param.defValue = defSubnet;  param.comment = "CIDR notation";  params.append(param);
 
+    param.label = "SSL only";  param.name = "sslOnly";  param.type = ConfigList::TypeBool;
+    param.defValue = true;  param.comment = "";  params.append(param);
+
     param.label = "SSL key file";  param.name = "sslKeyPath";  param.type = ConfigList::TypeFile;
     param.defValue = defSslKeyPath;  param.comment = "You can/must make your own. See Openssl.";  params.append(param);
 
@@ -250,6 +253,7 @@ void MainWindow::setPublicParams(QSettings &set)
     servParams.anonEnable = set.value("anonEnable", false).toBool();
     servParams.readOnly = set.value("readOnly", false).toBool();
     servParams.oneIp = set.value("oneIp", true).toBool();
+    servParams.sslOnly = set.value("sslOnly", true).toBool();
     sslKeyPath = set.value("sslKeyPath", defSslKeyPath).toString();
     sslCertPath = set.value("sslCertPath", defSslCertPath).toString();
 
@@ -438,6 +442,12 @@ void MainWindow::startServer()
     servParams.sslConf.setPrivateKey( QSslKey(file.readAll(), QSsl::Rsa, QSsl::Pem) );
 
     servParams.sslConf.setPeerVerifyMode(QSslSocket::VerifyNone);
+
+    if (servParams.sslOnly && (servParams.sslConf.localCertificate().isNull() || servParams.sslConf.privateKey().isNull()))
+    {
+        qInfo() << "Bad SSL configuration";
+        return;
+    }
 
     if (!server)
     {

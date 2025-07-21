@@ -48,7 +48,7 @@ private:
     QString configFileName;
     ConfigList* confList = 0;
     QVector<ParamStruct> params;
-    FtpServerParams servParams;
+    FtpParams servParams;
     QString sslKeyPath;
     QString sslCertPath;
     bool anonEnable = false;
